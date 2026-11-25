@@ -3,7 +3,7 @@
 Provides:
 - ``record_until_silence``: Real-time microphone listener that automatically detects
   when the user starts speaking, streams live RMS audio levels to UI visualizers,
-  and automatically stops recording after *silence_duration* seconds (default 3.0s)
+  and automatically stops recording after *silence_duration* seconds (default 1.5s)
   once the user finishes speaking.
 - ``record_to_wav``: Fixed-duration recorder preserved for compatibility.
 """
@@ -58,7 +58,7 @@ def record_until_silence(
     1. Calibrates ambient noise floor for ~0.3s.
     2. Waits until speech energy exceeds the adaptive threshold (calling ``on_speech_start``).
     3. Records continuously while the user speaks, keeping a 0.5s pre-roll so the first syllable is preserved.
-    4. Automatically stops ``silence_duration`` seconds (default 3.0s) after the user stops speaking.
+    4. Automatically stops ``silence_duration`` seconds (default 1.5s) after the user stops speaking.
     5. Trims excess trailing silence and saves a 16kHz mono WAV file.
 
     Returns:
@@ -157,7 +157,7 @@ def record_until_silence(
     if not speech_started or speech_chunks < 2 or not recorded_chunks:
         return None
 
-    # Trim excess trailing silence (keep ~0.4s tail out of the 3.0s silence window)
+    # Trim excess trailing silence (keep ~0.4s tail out of the 1.5s silence window)
     excess_silence_chunks = max(0, int((silence_elapsed - 0.4) / chunk_sec))
     if excess_silence_chunks > 0 and len(recorded_chunks) > excess_silence_chunks + 5:
         recorded_chunks = recorded_chunks[:-excess_silence_chunks]

@@ -528,7 +528,7 @@ class JarvisHudHomePanel(QWidget):
         self.frame_audit = HudFrame("SECURITY & SYSTEM FEED", "FULL ACCESS" if settings.jarvis_full_pc_access else "PROTECTED")
         self.lbl_sec_feed = QLabel(
             f"• PC ACCESS        : {pc_mode}\n"
-            f"• AUTO VOICE VAD   : {'ON (3.0s SILENCE)' if self.auto_voice_enabled else 'MANUAL'}\n"
+            f"• AUTO VOICE VAD   : {'ON (1.5s SILENCE)' if self.auto_voice_enabled else 'MANUAL'}\n"
             "• VOICE LANGUAGES  : EN / TE / HI"
         )
         self.lbl_sec_feed.setStyleSheet("color: #6EE7B7; font-family: Consolas; font-size: 9px; line-height: 1.4;")

@@ -200,7 +200,7 @@ def process_user_query(
                     if use_tools
                     else ""
                 )
-                + f"Answer in {lang_name} cleanly and concisely (1-3 brief spoken-friendly sentences unless asked for detail). "
+                + f"Answer in {lang_name} cleanly and concisely (1-2 brief spoken-friendly sentences). "
                 "Address the user respectfully as Boss."
             )
             messages: list[Dict[str, Any]] = [{"role": "system", "content": system_prompt}]
@@ -213,7 +213,7 @@ def process_user_query(
             # Streaming fast path for conversational / knowledge answers (no tools overhead!)
             if not use_tools:
                 stream_resp = client.chat_complete(
-                    messages, stream=True, max_tokens=320
+                    messages, stream=True, max_tokens=200
                 )
                 full_chunks: list[str] = []
                 pending_buf = ""
@@ -245,7 +245,7 @@ def process_user_query(
             # Tool-calling path when PC/file/web actions are hinted
             reply = ""
             for _ in range(4):
-                resp = client.chat_complete(messages, stream=False, tools=tools, max_tokens=320)
+                resp = client.chat_complete(messages, stream=False, tools=tools, max_tokens=200)
                 msg = resp.choices[0].message if hasattr(resp, "choices") else resp["choices"][0]["message"]
                 tool_calls = getattr(msg, "tool_calls", None)
                 if not tool_calls:

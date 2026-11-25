@@ -19,8 +19,8 @@ from security.audit_logger import get_audit_logger
 
 _OPENROUTER_FALLBACK_MODELS = [
     "openai/gpt-4.1-nano",
+    "meta-llama/llama-3.1-8b-instruct:free",
     "google/gemini-2.5-flash",
-    "anthropic/claude-haiku-4.5",
 ]
 
 
@@ -58,14 +58,14 @@ class OpenAIClient:
             headers["X-Title"] = "JARVIS Assistant"
 
         http_client = httpx.Client(
-            timeout=httpx.Timeout(10.0, connect=4.0),
+            timeout=httpx.Timeout(8.0, connect=3.0),
             limits=httpx.Limits(max_keepalive_connections=8, max_connections=16),
         )
         self._sdk_client = OpenAI(
             api_key=settings.openai_api_key,
             base_url=base_url,
             default_headers=headers if headers else None,
-            timeout=10.0,
+            timeout=8.0,
             max_retries=0,
             http_client=http_client,
         )

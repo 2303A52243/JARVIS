@@ -133,13 +133,33 @@ def _synthesize_gtts(text: str, lang_code: str) -> bytes:
 
 
 def _synthesize_offline_sapi(text: str, voice_name: Optional[str] = None) -> bytes:
-    """Generate WAV bytes using Windows SAPI (English only)."""
+    """Generate WAV bytes using Windows SAPI (English only).
+
+    Prefers male 'David' voice to stay consistent with Edge-TTS 'GuyNeural'.
+    """
     import comtypes.client
     import pythoncom
 
     pythoncom.CoInitialize()
     try:
         tts = comtypes.client.CreateObject("SAPI.SpVoice")
+
+        # Try to select a consistent male voice (David) to avoid gender switching
+        if voice_name is None:
+            try:
+                from voice.language_manager import get_language_info
+                sapi_pref = get_language_info("en").get("sapi_voice", "David")
+            except Exception:
+                sapi_pref = "David"
+            try:
+                for v in tts.GetVoices():
+                    desc = v.GetDescription()
+                    if sapi_pref.lower() in desc.lower():
+                        tts.Voice = v
+                        break
+            except Exception:
+                pass
+
         fs = comtypes.client.CreateObject("SAPI.SpFileStream")
         fd, tmp_path = tempfile.mkstemp(suffix=".wav")
         os.close(fd)
@@ -198,15 +218,25 @@ def synthesize_speech(
         except Exception:
             pass
 
-    # 1. Primary Engine: Microsoft Edge Neural TTS (IPv4 fast path + 4s cap)
+    # 1. Primary Engine: Microsoft Edge Neural TTS (IPv4 fast path + 2.5s cap)
     try:
         audio_data = _synthesize_edge_tts(clean_text, edge_voice, rate=rate_str)
         if audio_data:
             logger.info(f"Edge-TTS synthesis succeeded for '{target_lang}' ({edge_voice}) rate={rate_str}.")
     except Exception as exc:
-        logger.warning(f"Edge-TTS failed ({exc}); falling back to Google TTS.")
+        logger.warning(f"Edge-TTS failed ({exc}); falling back.")
 
-    # 2. Secondary Engine: Google Translate TTS (gTTS)
+    # 2. Secondary: Windows SAPI (male David voice — consistent with Edge GuyNeural)
+    #    Preferred over gTTS for English because gTTS uses a female voice.
+    if not audio_data and target_lang == "en":
+        try:
+            audio_data = _synthesize_offline_sapi(clean_text, voice_name=voice)
+            if audio_data:
+                logger.info("SAPI TTS (David male) succeeded.")
+        except Exception as exc:
+            logger.warning(f"SAPI TTS failed ({exc}); trying Google TTS.")
+
+    # 3. Tertiary: Google Translate TTS (gTTS) — female voice, used for non-English or as last resort
     if not audio_data:
         try:
             gtts_code = "te" if target_lang == "te" else ("hi" if target_lang == "hi" else "en")
@@ -214,9 +244,9 @@ def synthesize_speech(
             if audio_data:
                 logger.info(f"gTTS synthesis succeeded for '{gtts_code}'.")
         except Exception as exc:
-            logger.warning(f"Google TTS failed ({exc}); checking OpenAI/SAPI TTS.")
+            logger.warning(f"Google TTS failed ({exc}); checking OpenAI TTS.")
 
-    # 3. Tertiary Engine: OpenAI TTS (if configured and not OpenRouter)
+    # 4. OpenAI TTS (if configured and not OpenRouter)
     if not audio_data and settings.is_api_key_configured and not settings.is_openrouter:
         try:
             from ai.openai_client import get_openai_client
@@ -225,10 +255,10 @@ def synthesize_speech(
             if audio_data:
                 logger.info("OpenAI TTS succeeded.")
         except Exception as exc:
-            logger.warning(f"OpenAI TTS failed ({exc}); trying offline SAPI.")
+            logger.warning(f"OpenAI TTS failed ({exc}).")
 
-    # 4. Offline Fallback: Windows SAPI (English)
-    if not audio_data:
+    # 5. Last resort SAPI fallback for non-English (already tried for English above)
+    if not audio_data and target_lang != "en":
         try:
             audio_data = _synthesize_offline_sapi(clean_text, voice_name=voice)
         except Exception as exc:

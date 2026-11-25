@@ -16,9 +16,10 @@ SUPPORTED_LANGUAGES = {
         "name": "English",
         "native": "English",
         "greeting": "Hello Boss. JARVIS is online and ready.",
-        "voice": "Microsoft Zira Desktop - English (United States)",
+        "voice": "Microsoft David Desktop - English (United States)",
         "openai_voice": "onyx",
         "edge_voice": "en-US-GuyNeural",   # fastest Edge voice (lower latency than Christopher)
+        "sapi_voice": "Microsoft David Desktop",  # male SAPI fallback (consistent with Edge Guy)
         "gtts_lang": "en",
         "stt_lang": "en-IN",
     },
