@@ -62,9 +62,9 @@ def _try_fast_local_command(text: str, language: str = "en") -> Optional[str]:
         return _handle_offline_query(text, language=language)
     if any(p in lower for p in ("know telugu", "speak telugu", "understand telugu", "know hindi", "speak hindi", "understand hindi")):
         return _handle_offline_query(effective, language=language)
-    if re.search(r"^(what\s+time\s+is\s+it|current\s+time|time\??)$", lower):
+    if re.search(r"(what(?:'?s|\s+is)\s+the\s+time|what\s+time\s+is\s+it|current\s+time|tell\s+(?:me\s+)?the\s+time|^time[.!?]*$)", lower):
         return f"The current time is {time.strftime('%I:%M %p')}."
-    if re.search(r"^(today'?s\s+date|what\s+is\s+(?:the\s+)?date|date\??)$", lower):
+    if re.search(r"(what(?:'?s|\s+is)\s+(?:the\s+)?date\s*(?:today)?|today'?s?\s+date|tell\s+(?:me\s+)?the\s+date|^date[.!?]*$)", lower):
         return f"Today is {time.strftime('%A, %B %d, %Y')}."
 
     # Volume / brightness / media / lock / screenshot
@@ -193,6 +193,7 @@ def process_user_query(
             lang_name = "Telugu" if language == "te" else ("Hindi" if language == "hi" else "English")
             system_prompt = (
                 "You are JARVIS, a fast, loyal personal AI assistant on the user's Windows PC.\n"
+                f"Current date and time: {time.strftime('%A, %B %d, %Y at %I:%M %p')}.\n"
                 + (
                     "You have full PC control tools (apps, folders, volume, brightness, screenshots, windows, "
                     "keyboard/mouse, power, URLs, clipboard, processes, PowerShell/CMD, files, web search). "
@@ -382,10 +383,10 @@ def _handle_offline_query(text: str, language: str = "en") -> str:
             "Because light attracts bugs! 😄"
         )
 
-    if "time" in lower or "what time is it" in lower or "current time" in lower:
+    if re.search(r"\b(time|clock)\b", lower) and re.search(r"\b(what|current|tell|now)\b", lower):
         return f"The current time is {time.strftime('%I:%M %p (%Z)')}."
 
-    if "date" in lower or "today's date" in lower:
+    if re.search(r"\b(date|today)\b", lower) and re.search(r"\b(what|current|tell|today)\b", lower):
         return f"Today is {time.strftime('%A, %B %d, %Y')}."
 
     if "what can you do" in lower or "help" in lower or "capabilities" in lower:
