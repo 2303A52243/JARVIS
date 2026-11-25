@@ -1,0 +1,42 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# Environment and Secrets (CRITICAL: Never commit API keys)
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# Python cache & compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local databases and audit logs
+data/*.db
+data/*.sqlite3
+logs/*.log
+logs/*.jsonl
+temp_audio/
+*.wav
+*.mp3
+
+# IDE / OS specific
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Build / Distribution
+build/
+dist/
+*.spec
