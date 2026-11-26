@@ -89,12 +89,12 @@ def control_volume(action: str, level: Optional[int] = None) -> str:
         _tap_vk(win32con.VK_VOLUME_MUTE)
         return "Toggled system audio mute."
     if act == "up":
-        steps = max(1, min(25, (level or 10) // 2))
+        steps = max(1, min(50, (level or 10) // 2))
         for _ in range(steps):
             _tap_vk(win32con.VK_VOLUME_UP, 0.005)
         return f"Increased system volume by ~{steps * 2}%."
     if act == "down":
-        steps = max(1, min(25, (level or 10) // 2))
+        steps = max(1, min(50, (level or 10) // 2))
         for _ in range(steps):
             _tap_vk(win32con.VK_VOLUME_DOWN, 0.005)
         return f"Decreased system volume by ~{steps * 2}%."

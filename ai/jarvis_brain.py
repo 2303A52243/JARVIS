@@ -52,6 +52,55 @@ def _strip_wake_prefix(text: str) -> str:
     return text.strip()
 
 
+def _try_volume_command(lower: str) -> Optional[str]:
+    """Parse natural volume commands without substring false-positives (e.g. 'volume up' vs 'upto')."""
+    if "volume" not in lower and lower not in ("mute", "unmute"):
+        return None
+
+    # 1. Target level: "set volume to 50%", "decrease/increase volume (up)to 50%", "volume to 50%"
+    vol_to = re.search(
+        r"(?:(?:set|decrease|reduce|lower|increase|raise|boost)\s+)?(?:the\s+)?volume\s+(?:up\s*to|upto|to)\s+(\d{1,3})",
+        lower,
+    )
+    if vol_to:
+        return pc_ctrl.control_volume("set", int(vol_to.group(1)))
+
+    # 2. Relative decrease: "decrease/reduce/lower volume [by] 20%", "volume down [by] 20%"
+    vol_down = re.search(
+        r"(?:(?:decrease|reduce|lower)\s+(?:the\s+)?volume\s+(?:by\s+)?|volume\s+down\s+(?:by\s+)?)(\d{1,3})",
+        lower,
+    )
+    if vol_down:
+        return pc_ctrl.control_volume("down", int(vol_down.group(1)))
+
+    # 3. Relative increase: "increase/raise/boost volume [by] 20%", "volume up [by] 20%"
+    vol_up = re.search(
+        r"(?:(?:increase|raise|boost)\s+(?:the\s+)?volume\s+(?:by\s+)?|volume\s+up\s+(?:by\s+)?)(\d{1,3})",
+        lower,
+    )
+    if vol_up:
+        return pc_ctrl.control_volume("up", int(vol_up.group(1)))
+
+    # 4. Bare "volume 50" / "volume 50%"
+    vol_bare = re.search(r"\bvolume\s+(\d{1,3})\b", lower)
+    if vol_bare:
+        return pc_ctrl.control_volume("set", int(vol_bare.group(1)))
+
+    # 5. Mute / unmute
+    if re.search(r"\bunmute\b", lower):
+        return pc_ctrl.control_volume("unmute")
+    if re.search(r"\bmute\b", lower):
+        return pc_ctrl.control_volume("mute")
+
+    # 6. Step up / down without number (word-bounded so "volume upto" never matches "volume up")
+    if re.search(r"\b(?:volume\s+down|(?:decrease|reduce|lower)\s+(?:the\s+)?volume)\b", lower):
+        return pc_ctrl.control_volume("down", 10)
+    if re.search(r"\b(?:volume\s+up|(?:increase|raise|boost)\s+(?:the\s+)?volume)\b", lower):
+        return pc_ctrl.control_volume("up", 10)
+
+    return None
+
+
 def _try_fast_local_command(text: str, language: str = "en") -> Optional[str]:
     """Execute clear deterministic local PC/greeting/diagnostic commands without LLM latency."""
     effective = _strip_wake_prefix(text)
@@ -68,15 +117,9 @@ def _try_fast_local_command(text: str, language: str = "en") -> Optional[str]:
         return f"Today is {time.strftime('%A, %B %d, %Y')}."
 
     # Volume / brightness / media / lock / screenshot
-    vol_set = re.search(r"(?:set\s+)?volume\s+(?:to\s+)?(\d{1,3})", lower)
-    if vol_set:
-        return pc_ctrl.control_volume("set", int(vol_set.group(1)))
-    if "volume up" in lower or "increase volume" in lower:
-        return pc_ctrl.control_volume("up")
-    if "volume down" in lower or "decrease volume" in lower:
-        return pc_ctrl.control_volume("down")
-    if "mute volume" in lower or "mute audio" in lower or lower in ("mute", "unmute"):
-        return pc_ctrl.control_volume("mute" if "unmute" not in lower else "unmute")
+    vol_res = _try_volume_command(lower)
+    if vol_res is not None:
+        return vol_res
 
     bright_set = re.search(r"brightness\s+(?:to\s+)?(\d{1,3})", lower)
     if bright_set:
@@ -403,17 +446,9 @@ def _handle_offline_query(text: str, language: str = "en") -> str:
         )
 
     # ── FULL PC CONTROLS (OFFLINE FAST PATH) ────────────────────────────────
-    vol_set = re.search(r"(?:set\s+)?volume\s+(?:to\s+)?(\d{1,3})", lower)
-    if vol_set:
-        return pc_ctrl.control_volume("set", int(vol_set.group(1)))
-    if "volume up" in lower or "increase volume" in lower:
-        return pc_ctrl.control_volume("up")
-    if "volume down" in lower or "decrease volume" in lower:
-        return pc_ctrl.control_volume("down")
-    if "mute volume" in lower or "mute audio" in lower or lower == "mute":
-        return pc_ctrl.control_volume("mute")
-    if "unmute" in lower:
-        return pc_ctrl.control_volume("unmute")
+    vol_res = _try_volume_command(lower)
+    if vol_res is not None:
+        return vol_res
 
     bright_set = re.search(r"brightness\s+(?:to\s+)?(\d{1,3})", lower)
     if bright_set:

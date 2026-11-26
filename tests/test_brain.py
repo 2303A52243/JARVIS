@@ -75,3 +75,32 @@ def test_tts_sentence_chunking():
     )
     assert len(chunks) >= 2
     assert chunks[0] == "Opening folder right away, Boss."
+
+
+def test_volume_command_parsing(monkeypatch):
+    from ai.jarvis_brain import _try_volume_command
+    import system.pc_controller as pc_ctrl
+
+    calls = []
+    monkeypatch.setattr(pc_ctrl, "control_volume", lambda action, level=None: calls.append((action, level)) or f"{action}:{level}")
+
+    assert _try_volume_command("decrease the volume upto 50%") == "set:50"
+    assert _try_volume_command("decrease volume up to 40%") == "set:40"
+    assert _try_volume_command("decrease the volume by 20%") == "down:20"
+    assert _try_volume_command("reduce volume by 30 percent") == "down:30"
+    assert _try_volume_command("increase the volume by 24%") == "up:24"
+    assert _try_volume_command("decrease the volume") == "down:10"
+    assert _try_volume_command("increase the volume") == "up:10"
+    assert _try_volume_command("volume up") == "up:10"
+    assert _try_volume_command("volume down") == "down:10"
+    assert calls == [
+        ("set", 50),
+        ("set", 40),
+        ("down", 20),
+        ("down", 30),
+        ("up", 24),
+        ("down", 10),
+        ("up", 10),
+        ("up", 10),
+        ("down", 10),
+    ]
